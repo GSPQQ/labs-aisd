@@ -34,7 +34,6 @@ if count_nechet>count_digit:
             if i>j and j>e:
                 f[i][j], f[j][i] = f[j][i], f[i][j]
         e-=1
-    print('Семетрично')
 else:
     for i in range(n):
         for j in range(n):
