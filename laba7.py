@@ -39,6 +39,16 @@ def F_iter(n):
         f_prev = f_current
     return f_prev
 
+def find_optimal_method(results):
+    """Определяет оптимальный метод для каждого n на основе времени выполнения"""
+    optimal = []
+    for i in range(len(results['n'])):
+        if results['time_rec'][i] < results['time_iter'][i]:
+            optimal.append('Рекурсия')
+        else:
+            optimal.append('Итерация')
+    return optimal
+
 def show_graph(results):
     graph_window = tk.Toplevel(root)
     graph_window.title("График времени выполнения")
@@ -49,6 +59,17 @@ def show_graph(results):
     
     plot.plot(results['n'], results['time_rec'], 'r-', label='Рекурсия')
     plot.plot(results['n'], results['time_iter'], 'b-', label='Итерация')
+    
+    # Добавляем точки перехода оптимального метода
+    optimal = find_optimal_method(results)
+    switch_points = []
+    for i in range(1, len(optimal)):
+        if optimal[i] != optimal[i-1]:
+            switch_points.append(results['n'][i])
+    
+    for point in switch_points:
+        plot.axvline(x=point, color='g', linestyle='--', alpha=0.5)
+    
     plot.set_title('Сравнение времени выполнения рекурсивного и итерационного подходов')
     plot.set_xlabel('n')
     plot.set_ylabel('Время (мс)')
@@ -58,6 +79,26 @@ def show_graph(results):
     canvas = FigureCanvasTkAgg(fig, master=graph_window)
     canvas.draw()
     canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+    
+    # Добавляем информацию об оптимальных методах
+    info_text = tk.Text(graph_window, height=5, wrap=tk.WORD)
+    info_text.pack(fill=tk.X, padx=10, pady=5)
+    
+    optimal_info = "Оптимальные методы:\n"
+    ranges = []
+    start = results['n'][0]
+    current_method = optimal[0]
+    
+    for i in range(1, len(optimal)):
+        if optimal[i] != current_method:
+            ranges.append(f"n={start}-{results['n'][i-1]}: {current_method}")
+            start = results['n'][i]
+            current_method = optimal[i]
+    ranges.append(f"n={start}-{results['n'][-1]}: {current_method}")
+    
+    optimal_info += "\n".join(ranges)
+    info_text.insert(tk.END, optimal_info)
+    info_text.config(state=tk.DISABLED)
     
     close_button = ttk.Button(graph_window, text="Закрыть", command=graph_window.destroy)
     close_button.pack(side=tk.BOTTOM, pady=10)
@@ -79,8 +120,8 @@ def calculate():
             'time_iter': []
         }
         
-        output_text.insert(tk.END, f"{'n':<5}{'F рекурсивно':<20}{'F итерационно':<20}{'Время рекурсии (мс)':<20}{'Время итерации (мс)':<20}\n")
-        output_text.insert(tk.END, "-"*85 + "\n")
+        output_text.insert(tk.END, f"{'n':<5}{'F рекурсивно':<20}{'F итерационно':<20}{'Время рекурсии (мс)':<20}{'Время итерации (мс)':<20}{'Оптимальный метод':<20}\n")
+        output_text.insert(tk.END, "-"*105 + "\n")
         
         for i in range(1, n + 1):
             start = timeit.default_timer()
@@ -90,6 +131,8 @@ def calculate():
             start = timeit.default_timer()
             f_iter = F_iter(i)
             time_iter = (timeit.default_timer() - start) * 1000
+            
+            optimal = 'Рекурсия' if time_rec < time_iter else 'Итерация'
             
             results['n'].append(i)
             results['F_rec'].append(f_rec)
@@ -102,7 +145,8 @@ def calculate():
                 f"{f_rec:<20.6f}"
                 f"{f_iter:<20.6f}"
                 f"{time_rec:<20.4f}"
-                f"{time_iter:<20.4f}\n")
+                f"{time_iter:<20.4f}"
+                f"{optimal:<20}\n")
             
             root.update()
         
@@ -115,8 +159,8 @@ def calculate():
 
 # Основное окно
 root = tk.Tk()
-root.title("Вычисление функции F(n)")
-root.geometry("800x600")
+root.title("Вычисление функции F(n) и определение оптимального метода")
+root.geometry("1000x600")
 
 # Центрируем главное окно
 root.withdraw()  # Скрываем окно перед центрированием
@@ -147,7 +191,7 @@ output_frame = ttk.Frame(root, padding="10")
 output_frame.pack(fill=tk.BOTH, expand=True)
 
 # Текстовое поле с прокруткой
-output_text = scrolledtext.ScrolledText(output_frame, width=100, height=25, wrap=tk.NONE)
+output_text = scrolledtext.ScrolledText(output_frame, width=120, height=25, wrap=tk.NONE)
 output_text.pack(fill=tk.BOTH, expand=True)
 
 # Горизонтальная прокрутка
