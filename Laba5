@@ -28,40 +28,35 @@ def generate_itertools(K, T, target_sum):
     return valid_combs
 
 def find_optimal_solution(solutions):
-    # Пример целевой функции: найти решение с минимальной суммой всех элементов
     if not solutions:
         return None
     return min(solutions, key=lambda x: np.sum(x))
 
-# Параметры (осторожно, 3^(K*T) растёт очень быстро!)
 K, T = 2, 2
-target_sum = 3  # Ограничение: сумма элементов в каждой строке должна быть равна 3
-num_runs = 100  # Количество прогонов для усреднения
+target_sum = 3
+num_runs = 100
 
-# Замер времени рекурсивного метода
 recursive_time = timeit(
     lambda: generate_recursive(K, T, target_sum),
     number=num_runs
 ) / num_runs
 
-# Замер времени itertools
 itertools_time = timeit(
     lambda: generate_itertools(K, T, target_sum),
     number=num_runs
 ) / num_runs
 
-print(f"Рекурсивный метод: {recursive_time:.6f} сек (в среднем)")
-print(f"itertools: {itertools_time:.6f} сек (в среднем)")
-print(f"\nitertools быстрее в {recursive_time / itertools_time:.1f} раз")
+print(f"Recursive method: {recursive_time:.6f} sec (average)")
+print(f"itertools: {itertools_time:.6f} sec (average)")
+print(f"\nitertools is faster by {recursive_time / itertools_time:.1f} times")
 
-# Найти оптимальное решение
 recursive_solutions = generate_recursive(K, T, target_sum)
 itertools_solutions = generate_itertools(K, T, target_sum)
 
 optimal_recursive = find_optimal_solution(recursive_solutions)
 optimal_itertools = find_optimal_solution(itertools_solutions)
 
-print("\nОптимальное решение (рекурсивный метод):")
+print("\nOptimal solution (recursive method):")
 print(optimal_recursive)
-print("\nОптимальное решение (itertools):")
+print("\nOptimal solution (itertools):")
 print(optimal_itertools)
