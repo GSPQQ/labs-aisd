@@ -3,7 +3,7 @@ import timeit
 import itertools
 import numpy as np
 import tkinter as tk
-from tkinter import ttk, scrolledtext
+from tkinter import ttk, scrolledtext, messagebox
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 
@@ -32,6 +32,27 @@ def generate_recursive(K, T):
 def generate_itertools(K, T):
     combs = itertools.product([0, 1, 2], repeat=K * T)
     return [np.array(c).reshape(K, T) for c in combs]
+
+def show_matrices_sample(matrices, title):
+    sample_window = tk.Toplevel(root)
+    sample_window.title(title)
+    sample_window.geometry("600x400")
+    
+    text = scrolledtext.ScrolledText(sample_window, width=80, height=25, wrap=tk.NONE)
+    text.pack(fill=tk.BOTH, expand=True)
+    
+    # Показываем только первые 5 матриц для примера
+    for i, matrix in enumerate(matrices[:5]):
+        text.insert(tk.END, f"Матрица {i+1}:\n")
+        text.insert(tk.END, str(matrix) + "\n\n")
+    
+    # Показываем общее количество
+    text.insert(tk.END, f"\nВсего сгенерировано матриц: {len(matrices)}\n")
+    
+    close_button = ttk.Button(sample_window, text="Закрыть", command=sample_window.destroy)
+    close_button.pack(side=tk.BOTTOM, pady=10)
+    
+    center_window(sample_window)
 
 def find_optimal_method(results):
     """Определяет оптимальный метод для каждого K и T на основе времени выполнения"""
@@ -92,6 +113,18 @@ def show_graph(results):
     info_text.insert(tk.END, optimal_info)
     info_text.config(state=tk.DISABLED)
     
+    # Кнопки для просмотра матриц
+    matrix_buttons = ttk.Frame(graph_window)
+    matrix_buttons.pack(side=tk.BOTTOM, pady=5)
+    
+    if len(results['sample_recursive']) > 0:
+        ttk.Button(matrix_buttons, text="Показать рекурсивные матрицы", 
+                  command=lambda: show_matrices_sample(results['sample_recursive'][0], "Рекурсивные матрицы")).pack(side=tk.LEFT, padx=5)
+    
+    if len(results['sample_itertools']) > 0:
+        ttk.Button(matrix_buttons, text="Показать itertools матрицы", 
+                  command=lambda: show_matrices_sample(results['sample_itertools'][0], "itertools матрицы")).pack(side=tk.LEFT, padx=5)
+    
     close_button = ttk.Button(graph_window, text="Закрыть", command=graph_window.destroy)
     close_button.pack(side=tk.BOTTOM, pady=10)
     
@@ -99,12 +132,18 @@ def show_graph(results):
 
 def calculate():
     try:
-        max_k = int(entry_k.get())
-        max_t = int(entry_t.get())
+        K = int(entry_k.get())
+        T = int(entry_t.get())
         num_runs = int(entry_runs.get())
         
-        if max_k <= 0 or max_t <= 0 or num_runs <= 0:
+        if K <= 0 or T <= 0 or num_runs <= 0:
             raise ValueError
+        
+        # Проверка на слишком большие значения
+        if K * T > 6:
+            if not messagebox.askyesno("Предупреждение", 
+                                     f"При K={K} и T={T} будет сгенерировано {3**(K*T)} матриц.\nЭто может занять много времени и памяти. Продолжить?"):
+                return
         
         output_text.delete(1.0, tk.END)
         results = {
@@ -112,7 +151,9 @@ def calculate():
             'T': [],
             'time_recursive': [],
             'time_itertools': [],
-            'speedup': []
+            'speedup': [],
+            'sample_recursive': [],
+            'sample_itertools': []
         }
         
         output_text.insert(tk.END, 
@@ -120,38 +161,53 @@ def calculate():
             f"{'Разница (сек)':<20}{'Оптимальный':<15}{'Ускорение':<15}\n")
         output_text.insert(tk.END, "-"*100 + "\n")
         
-        for K in range(1, max_k + 1):
-            for T in range(1, max_t + 1):
-                # Замер времени рекурсивного метода
-                recursive_time = timeit.timeit(
-                    lambda: generate_recursive(K, T),
-                    number=num_runs
-                ) / num_runs
-                
-                # Замер времени itertools
-                itertools_time = timeit.timeit(
-                    lambda: generate_itertools(K, T),
-                    number=num_runs
-                ) / num_runs
-                
-                speedup = recursive_time / itertools_time if itertools_time != 0 else 0
-                optimal = 'Рекурсия' if recursive_time < itertools_time else 'itertools'
-                
-                results['K'].append(K)
-                results['T'].append(T)
-                results['time_recursive'].append(recursive_time)
-                results['time_itertools'].append(itertools_time)
-                results['speedup'].append(speedup)
-                
-                output_text.insert(tk.END, 
-                    f"{K:<5}{T:<5}"
-                    f"{recursive_time:<20.6f}"
-                    f"{itertools_time:<20.6f}"
-                    f"{abs(recursive_time - itertools_time):<20.6f}"
-                    f"{optimal:<15}"
-                    f"{speedup:.1f}x{'' if speedup >= 1 else ' (медленнее)':<15}\n")
-                
-                root.update()
+        # Генерируем матрицы один раз для показа
+        recursive_matrices = generate_recursive(K, T)
+        itertools_matrices = generate_itertools(K, T)
+        
+        results['sample_recursive'].append(recursive_matrices)
+        results['sample_itertools'].append(itertools_matrices)
+        
+        # Замер времени рекурсивного метода
+        recursive_time = timeit.timeit(
+            lambda: generate_recursive(K, T),
+            number=num_runs
+        ) / num_runs
+        
+        # Замер времени itertools
+        itertools_time = timeit.timeit(
+            lambda: generate_itertools(K, T),
+            number=num_runs
+        ) / num_runs
+        
+        speedup = recursive_time / itertools_time if itertools_time != 0 else 0
+        optimal = 'Рекурсия' if recursive_time < itertools_time else 'itertools'
+        
+        results['K'].append(K)
+        results['T'].append(T)
+        results['time_recursive'].append(recursive_time)
+        results['time_itertools'].append(itertools_time)
+        results['speedup'].append(speedup)
+        
+        output_text.insert(tk.END, 
+            f"{K:<5}{T:<5}"
+            f"{recursive_time:<20.6f}"
+            f"{itertools_time:<20.6f}"
+            f"{abs(recursive_time - itertools_time):<20.6f}"
+            f"{optimal:<15}"
+            f"{speedup:.1f}x{'' if speedup >= 1 else ' (медленнее)':<15}\n")
+        
+        output_text.insert(tk.END, f"\nВсего сгенерировано матриц: {len(recursive_matrices)}\n")
+        
+        # Кнопки для просмотра матриц
+        matrix_buttons = ttk.Frame(root)
+        matrix_buttons.pack(side=tk.BOTTOM, pady=5)
+        
+        ttk.Button(matrix_buttons, text="Показать рекурсивные матрицы", 
+                  command=lambda: show_matrices_sample(recursive_matrices, "Рекурсивные матрицы")).pack(side=tk.LEFT, padx=5)
+        
+        ttk.Button(matrix_buttons, text="Показать itertools матрицы", 
+                  command=lambda: show_matrices_sample(itertools_matrices, "itertools матрицы")).pack(side=tk.LEFT, padx=5)
         
         graph_button.config(state=tk.NORMAL, command=lambda: show_graph(results))
     
@@ -163,7 +219,7 @@ def calculate():
 # Основное окно
 root = tk.Tk()
 root.title("Сравнение методов генерации матриц")
-root.geometry("1000x700")
+root.geometry("1000x750")
 
 # Центрируем главное окно
 root.withdraw()
@@ -175,12 +231,14 @@ input_frame = ttk.Frame(root, padding="10")
 input_frame.pack(fill=tk.X)
 
 # Элементы ввода
-ttk.Label(input_frame, text="Макс K:").pack(side=tk.LEFT, padx=5)
+ttk.Label(input_frame, text="K (строки):").pack(side=tk.LEFT, padx=5)
 entry_k = ttk.Entry(input_frame, width=5)
+entry_k.insert(0, "2")  # Значение по умолчанию
 entry_k.pack(side=tk.LEFT, padx=5)
 
-ttk.Label(input_frame, text="Макс T:").pack(side=tk.LEFT, padx=5)
+ttk.Label(input_frame, text="T (столбцы):").pack(side=tk.LEFT, padx=5)
 entry_t = ttk.Entry(input_frame, width=5)
+entry_t.insert(0, "2")  # Значение по умолчанию
 entry_t.pack(side=tk.LEFT, padx=5)
 
 ttk.Label(input_frame, text="Прогонов:").pack(side=tk.LEFT, padx=5)
@@ -203,7 +261,7 @@ output_frame = ttk.Frame(root, padding="10")
 output_frame.pack(fill=tk.BOTH, expand=True)
 
 # Текстовое поле с прокруткой
-output_text = scrolledtext.ScrolledText(output_frame, width=120, height=30, wrap=tk.NONE)
+output_text = scrolledtext.ScrolledText(output_frame, width=120, height=25, wrap=tk.NONE)
 output_text.pack(fill=tk.BOTH, expand=True)
 
 # Горизонтальная прокрутка
@@ -212,7 +270,7 @@ x_scroll.pack(fill=tk.X)
 output_text.configure(xscrollcommand=x_scroll.set)
 
 # Предупреждение
-warning_label = ttk.Label(root, text="Внимание: время выполнения растет экспоненциально с увеличением K и T!", 
+warning_label = ttk.Label(root, text="Внимание: количество матриц растет как 3^(K*T)! Будьте осторожны с большими K и T.", 
                          foreground="red")
 warning_label.pack(pady=5)
 
