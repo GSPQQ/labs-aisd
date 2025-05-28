@@ -13,20 +13,20 @@ def F_rec(n):
 
 def F_iter(n):
     if n < 3:
-        return 3
-    
-    f_prev = 3
-    current_fact = 1  
-    
+        return 3  
+
+    f_prev = 3       
+    sign = -1        
+    current_fact = 2  
+
     for i in range(3, n + 1):
+        current_fact *= (2*i - 1) * (2*i)
         if 3 < i <= 25:
-            f_current = f_prev
+            f_current = f_prev  
         else:
-            sign = -1 if i % 2 == 0 else 1
-            current_fact = math.factorial(2 * i)
             f_current = sign * (5 * f_prev) / current_fact - 2 * (i - 2)
         f_prev = f_current
-    
+        sign *= -1  
     return f_prev
 
 def main():
