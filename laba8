@@ -1,0 +1,314 @@
+import tkinter as tk
+from tkinter import ttk, messagebox, filedialog
+import csv
+from collections import defaultdict
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+
+
+class RentalContract:
+    def __init__(self, contract_id, client_name, car_model, car_class, manager, duration_days, price):
+        self.contract_id = contract_id
+        self.client_name = client_name
+        self.car_model = car_model
+        self.car_class = car_class
+        self.manager = manager
+        self.duration_days = duration_days
+        self.price = price
+
+    def __str__(self):
+        return (f"Договор №{self.contract_id}: {self.client_name} арендует {self.car_model} "
+                f"({self.car_class}) на {self.duration_days} дней, менеджер: {self.manager}")
+
+
+class RentalApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Управление договорами аренды автомобилей")
+        self.contracts = []
+        
+        # Создаем основную структуру интерфейса
+        self.create_widgets()
+        
+        # Загружаем тестовые данные
+        self.load_sample_data()
+    
+    def create_widgets(self):
+        # Фрейм для ввода данных
+        input_frame = ttk.LabelFrame(self.root, text="Добавить договор")
+        input_frame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+        
+        # Поля ввода
+        ttk.Label(input_frame, text="Номер договора:").grid(row=0, column=0, sticky="w")
+        self.contract_id_entry = ttk.Entry(input_frame)
+        self.contract_id_entry.grid(row=0, column=1, padx=5, pady=2)
+        
+        ttk.Label(input_frame, text="Клиент:").grid(row=1, column=0, sticky="w")
+        self.client_entry = ttk.Entry(input_frame)
+        self.client_entry.grid(row=1, column=1, padx=5, pady=2)
+        
+        ttk.Label(input_frame, text="Модель авто:").grid(row=2, column=0, sticky="w")
+        self.car_model_entry = ttk.Entry(input_frame)
+        self.car_model_entry.grid(row=2, column=1, padx=5, pady=2)
+        
+        ttk.Label(input_frame, text="Класс авто:").grid(row=3, column=0, sticky="w")
+        self.car_class_combobox = ttk.Combobox(input_frame, values=["Эконом", "Стандарт", "Премиум", "Внедорожник"])
+        self.car_class_combobox.grid(row=3, column=1, padx=5, pady=2)
+        
+        ttk.Label(input_frame, text="Менеджер:").grid(row=4, column=0, sticky="w")
+        self.manager_combobox = ttk.Combobox(input_frame, values=["Иванов", "Петрова", "Сидоров", "Кузнецова"])
+        self.manager_combobox.grid(row=4, column=1, padx=5, pady=2)
+        
+        ttk.Label(input_frame, text="Срок (дни):").grid(row=5, column=0, sticky="w")
+        self.duration_entry = ttk.Entry(input_frame)
+        self.duration_entry.grid(row=5, column=1, padx=5, pady=2)
+        
+        ttk.Label(input_frame, text="Цена:").grid(row=6, column=0, sticky="w")
+        self.price_entry = ttk.Entry(input_frame)
+        self.price_entry.grid(row=6, column=1, padx=5, pady=2)
+        
+        # Кнопки управления
+        ttk.Button(input_frame, text="Добавить", command=self.add_contract).grid(row=7, column=0, columnspan=2, pady=5)
+        ttk.Button(input_frame, text="Загрузить из файла", command=self.load_from_file).grid(row=8, column=0, columnspan=2, pady=5)
+        ttk.Button(input_frame, text="Сохранить в файл", command=self.save_to_file).grid(row=9, column=0, columnspan=2, pady=5)
+        
+        # Фрейм для отображения данных
+        display_frame = ttk.LabelFrame(self.root, text="Список договоров")
+        display_frame.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
+        
+        # Таблица для отображения договоров
+        self.tree = ttk.Treeview(display_frame, columns=("ID", "Client", "Car", "Class", "Manager", "Days", "Price"), show="headings")
+        self.tree.heading("ID", text="Номер")
+        self.tree.heading("Client", text="Клиент")
+        self.tree.heading("Car", text="Авто")
+        self.tree.heading("Class", text="Класс")
+        self.tree.heading("Manager", text="Менеджер")
+        self.tree.heading("Days", text="Дни")
+        self.tree.heading("Price", text="Цена")
+        
+        self.tree.column("ID", width=50)
+        self.tree.column("Client", width=100)
+        self.tree.column("Car", width=100)
+        self.tree.column("Class", width=80)
+        self.tree.column("Manager", width=80)
+        self.tree.column("Days", width=50)
+        self.tree.column("Price", width=70)
+        
+        self.tree.pack(fill="both", expand=True)
+        
+        # Фрейм для анализа данных
+        analysis_frame = ttk.LabelFrame(self.root, text="Анализ данных")
+        analysis_frame.grid(row=1, column=0, columnspan=2, padx=10, pady=10, sticky="nsew")
+        
+        ttk.Button(analysis_frame, text="Сегментация по классам авто", command=self.analyze_by_class).grid(row=0, column=0, padx=5, pady=5)
+        ttk.Button(analysis_frame, text="Сегментация по менеджерам", command=self.analyze_by_manager).grid(row=0, column=1, padx=5, pady=5)
+        ttk.Button(analysis_frame, text="Показать все договоры", command=self.display_contracts).grid(row=0, column=2, padx=5, pady=5)
+        
+        # График
+        self.figure = plt.figure(figsize=(5, 4), dpi=100)
+        self.canvas = FigureCanvasTkAgg(self.figure, master=analysis_frame)
+        self.canvas.get_tk_widget().grid(row=1, column=0, columnspan=3, pady=10)
+        
+        # Настройка растягивания
+        self.root.columnconfigure(0, weight=1)
+        self.root.columnconfigure(1, weight=1)
+        self.root.rowconfigure(0, weight=1)
+        self.root.rowconfigure(1, weight=1)
+    
+    def load_sample_data(self):
+        """Загрузка тестовых данных"""
+        sample_data = [
+            RentalContract("1001", "Смирнов А.И.", "Toyota Camry", "Стандарт", "Иванов", 5, 15000),
+            RentalContract("1002", "Петрова Е.В.", "Kia Rio", "Эконом", "Петрова", 3, 7500),
+            RentalContract("1003", "Козлов Д.С.", "BMW X5", "Премиум", "Сидоров", 7, 35000),
+            RentalContract("1004", "Николаева О.П.", "Hyundai Creta", "Внедорожник", "Кузнецова", 4, 18000),
+            RentalContract("1005", "Федоров М.К.", "Toyota Corolla", "Стандарт", "Иванов", 2, 6000),
+            RentalContract("1006", "Алексеева Т.Д.", "Mercedes E-class", "Премиум", "Петрова", 10, 60000),
+            RentalContract("1007", "Григорьев В.С.", "Lada Vesta", "Эконом", "Сидоров", 7, 10500),
+            RentalContract("1008", "Соколова Н.М.", "Volkswagen Tiguan", "Внедорожник", "Кузнецова", 5, 22500),
+        ]
+        self.contracts = sample_data
+        self.display_contracts()
+    
+    def add_contract(self):
+        """Добавление нового договора"""
+        try:
+            contract_id = self.contract_id_entry.get().strip()
+            client = self.client_entry.get().strip()
+            car_model = self.car_model_entry.get().strip()
+            car_class = self.car_class_combobox.get().strip()
+            manager = self.manager_combobox.get().strip()
+            duration = int(self.duration_entry.get().strip())
+            price = float(self.price_entry.get().strip())
+            
+            if not all([contract_id, client, car_model, car_class, manager]):
+                raise ValueError("Все поля должны быть заполнены")
+            
+            new_contract = RentalContract(contract_id, client, car_model, car_class, manager, duration, price)
+            self.contracts.append(new_contract)
+            self.display_contracts()
+            
+            # Очистка полей ввода
+            self.contract_id_entry.delete(0, tk.END)
+            self.client_entry.delete(0, tk.END)
+            self.car_model_entry.delete(0, tk.END)
+            self.car_class_combobox.set('')
+            self.manager_combobox.set('')
+            self.duration_entry.delete(0, tk.END)
+            self.price_entry.delete(0, tk.END)
+            
+            messagebox.showinfo("Успех", "Договор успешно добавлен")
+        except ValueError as e:
+            messagebox.showerror("Ошибка", f"Некорректные данные: {e}")
+    
+    def display_contracts(self):
+        """Отображение всех договоров в таблице"""
+        # Очистка таблицы
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+        
+        # Заполнение данными
+        for contract in self.contracts:
+            self.tree.insert("", tk.END, values=(
+                contract.contract_id,
+                contract.client_name,
+                contract.car_model,
+                contract.car_class,
+                contract.manager,
+                contract.duration_days,
+                contract.price
+            ))
+    
+    def analyze_by_class(self):
+        """Анализ по классам автомобилей"""
+        if not self.contracts:
+            messagebox.showwarning("Предупреждение", "Нет данных для анализа")
+            return
+        
+        class_counts = defaultdict(int)
+        for contract in self.contracts:
+            class_counts[contract.car_class] += 1
+        
+        self.show_pie_chart(
+            class_counts, 
+            title="Распределение договоров по классам автомобилей",
+            colors=['#ff9999','#66b3ff','#99ff99','#ffcc99']
+        )
+    
+    def analyze_by_manager(self):
+        """Анализ по менеджерам"""
+        if not self.contracts:
+            messagebox.showwarning("Предупреждение", "Нет данных для анализа")
+            return
+        
+        manager_counts = defaultdict(int)
+        for contract in self.contracts:
+            manager_counts[contract.manager] += 1
+        
+        self.show_pie_chart(
+            manager_counts, 
+            title="Распределение договоров по менеджерам",
+            colors=['#ff9999','#66b3ff','#99ff99','#ffcc99']
+        )
+    
+    def show_pie_chart(self, data_dict, title, colors=None):
+        """Отображение круговой диаграммы"""
+        labels = list(data_dict.keys())
+        sizes = list(data_dict.values())
+        
+        self.figure.clear()
+        ax = self.figure.add_subplot(111)
+        
+        if colors:
+            ax.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90, colors=colors)
+        else:
+            ax.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90)
+        
+        ax.axis('equal')  # Чтобы диаграмма была круглой
+        ax.set_title(title)
+        self.canvas.draw()
+    
+    def load_from_file(self):
+        """Загрузка данных из файла"""
+        file_path = filedialog.askopenfilename(
+            title="Выберите файл с данными",
+            filetypes=(("CSV файлы", "*.csv"), ("Текстовые файлы", "*.txt"), ("Все файлы", "*.*"))
+        )
+        
+        if not file_path:
+            return
+        
+        try:
+            with open(file_path, 'r', encoding='utf-8') as file:
+                reader = csv.reader(file)
+                next(reader)  # Пропускаем заголовок, если есть
+                
+                new_contracts = []
+                for row in reader:
+                    if len(row) != 7:
+                        continue
+                    
+                    try:
+                        contract = RentalContract(
+                            row[0].strip(),
+                            row[1].strip(),
+                            row[2].strip(),
+                            row[3].strip(),
+                            row[4].strip(),
+                            int(row[5].strip()),
+                            float(row[6].strip())
+                        )
+                        new_contracts.append(contract)
+                    except (ValueError, IndexError):
+                        continue
+                
+                if new_contracts:
+                    self.contracts = new_contracts
+                    self.display_contracts()
+                    messagebox.showinfo("Успех", f"Загружено {len(new_contracts)} договоров")
+                else:
+                    messagebox.showwarning("Предупреждение", "Не удалось загрузить данные из файла")
+        except Exception as e:
+            messagebox.showerror("Ошибка", f"Ошибка при загрузке файла: {e}")
+    
+    def save_to_file(self):
+        """Сохранение данных в файл"""
+        if not self.contracts:
+            messagebox.showwarning("Предупреждение", "Нет данных для сохранения")
+            return
+        
+        file_path = filedialog.asksaveasfilename(
+            title="Сохранить данные",
+            defaultextension=".csv",
+            filetypes=(("CSV файлы", "*.csv"), ("Текстовые файлы", "*.txt"), ("Все файлы", "*.*"))
+        )
+        
+        if not file_path:
+            return
+        
+        try:
+            with open(file_path, 'w', encoding='utf-8', newline='') as file:
+                writer = csv.writer(file)
+                # Записываем заголовок
+                writer.writerow(["ID", "Client", "CarModel", "CarClass", "Manager", "Duration", "Price"])
+                
+                for contract in self.contracts:
+                    writer.writerow([
+                        contract.contract_id,
+                        contract.client_name,
+                        contract.car_model,
+                        contract.car_class,
+                        contract.manager,
+                        contract.duration_days,
+                        contract.price
+                    ])
+            
+            messagebox.showinfo("Успех", f"Данные сохранены в файл: {file_path}")
+        except Exception as e:
+            messagebox.showerror("Ошибка", f"Ошибка при сохранении файла: {e}")
+
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = RentalApp(root)
+    root.mainloop()
