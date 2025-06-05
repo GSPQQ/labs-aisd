@@ -2,16 +2,12 @@ import itertools
 
 
 def generate_matrices_itertools(K, T):
-    """Генерация матриц с использованием itertools.permutations"""
     if T > 3:
         raise ValueError("T не может быть больше 3 (не хватит уникальных чисел 0,1,2)")
-    
     # Все возможные строки (перестановки 0,1,2 длиной T)
     possible_rows = list(itertools.permutations([0, 1, 2], T))
-    
     # Генерируем все комбинации строк
     matrix_combinations = itertools.product(possible_rows, repeat=K)
-    
     # Преобразуем в список списков
     return [[list(row) for row in matrix] for matrix in matrix_combinations]
 
