@@ -18,20 +18,16 @@ def F_recursive(n):
 # Итерационная реализация с оптимизацией
 def F_iterative(n):
     if n < 2:
-        return -2
-    
+        return -2  
     F_prev = -2  # F(1)
     fact = 1     # 0! = 1
     sign = -1    # Начинаем с n=2
-    
     for i in range(2, n+1):
         fact *= (i-1)
-        sign *= -1
         F_current = sign * (F_prev // fact)
         F_prev = F_current
-    
+        sign *= -1
     return F_prev
-
 def measure_performance():
     max_n = 20
     n_values = list(range(1, max_n + 1))
