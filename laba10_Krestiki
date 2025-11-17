@@ -74,7 +74,6 @@ bg=self.bg_color, fg=self.accent_color)
         self.back_button.bind("<Enter>", lambda e: self.back_button.config(bg=self.hover_color))
         self.back_button.bind("<Leave>", lambda e: self.back_button.config(bg=self.button_color))
 
-
     def back_to_menu(self):
         self.board_frame.pack_forget()
         self.back_button.pack_forget()
