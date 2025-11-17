@@ -2,10 +2,10 @@ from tkinter import *
 from tkinter.messagebox import showinfo
 
 
-class TicTacToe:
+class TicTac:
     def __init__(self, master):
         self.master = master
-        self.master.title('Крестики нолики | Tic Tac Toe')
+        self.master.title('Крестики нолики | Tic Tac ')
         self.master.geometry('%dx%d+%d+%d' % (1200, 1000, 350, 120))
         # Цветовая схема
         self.bg_color = "#2C3E50"  # Темно-синий фон
@@ -18,28 +18,24 @@ class TicTacToe:
         self.master.config(bg=self.bg_color)
         # Заголовок игры
         self.game_title = Label(master, text="Крестики-нолики", font=("Arial", 59, "bold"), 
-                               bg=self.bg_color, fg=self.accent_color)
+bg=self.bg_color, fg=self.accent_color)
         self.game_title.pack(pady=50)
         # Стиль для кнопок
         button_style = {"font": ("Arial", 30, "bold"),"bg": self.button_color,"fg": self.text_color,"activebackground": self.hover_color,"activeforeground": self.text_color,"relief": "raised","bd": 3,"width": 20,"height": 1,"cursor": "hand2"}
         # Кнопки
-        self.play_two_person = Button(master, text="Играть против друга", 
-                                     command=self.start_game_two, **button_style)
+        self.play_two_person = Button(master, text="Играть против друга", command=self.start_game_two, **button_style)
         self.play_two_person.pack(pady=20)
-        # Эффект наведения для кнопок
         self.play_two_person.bind("<Enter>", lambda e: self.play_two_person.config(bg=self.hover_color))
-        self.play_two_person.bind("<Leave>", lambda e: self.play_two_person.config(bg=self.button_color))
-        self.play_ai = Button(master, text="Против Компьютера", 
-                             command=self.start_game_ai, **button_style)
+        self.play_two_person.bind("<Leave>", lambda e: self.play_two_person.config(bg=self.button_color))# Эффект наведения для кнопок
+        self.play_ai = Button(master, text="Против Компьютера", command=self.start_game_ai, **button_style)
         self.play_ai.pack(pady=20)
         self.play_ai.bind("<Enter>", lambda e: self.play_ai.config(bg=self.hover_color))
-        self.play_ai.bind("<Leave>", lambda e: self.play_ai.config(bg=self.button_color))
-        self.exit = Button(master, text="Выйти из игры", 
-                          command=master.destroy, **button_style)
+        self.play_ai.bind("<Leave>", lambda e: self.play_ai.config(bg=self.button_color))# Эффект наведения для кнопок
+        self.exit = Button(master, text="Выйти из игры", command=master.destroy, **button_style)
         self.exit.pack(pady=20)
         self.exit.bind("<Enter>", lambda e: self.exit.config(bg=self.accent_color))
-        self.exit.bind("<Leave>", lambda e: self.exit.config(bg=self.button_color))
-        self.current_player = "X"
+        self.exit.bind("<Leave>", lambda e: self.exit.config(bg=self.button_color))# Эффект наведения для кнопок
+        self.current_player = "X" 
         self.maps = [""] * 9  # Инициализируем игровую карту
     def start_game_two(self):
         self.is_ai_game = False  # Устанавливаем флаг, что играем против друга
@@ -58,7 +54,7 @@ class TicTacToe:
         self.board_frame = Frame(self.master, bg=self.bg_color)
         self.board_frame.pack(pady=40)
 
-        # Стиль для игровых кнопок
+        # Стиль для игровых полей
         board_button_style = {
             "font": ("Arial", 50, "bold"),"width": 4,"height": 2,"relief": "raised","bd": 7,"cursor": "hand2"
         }
@@ -74,19 +70,14 @@ class TicTacToe:
         # Кнопка "Назад"
         self.back_button = Button(self.master, text="Назад в меню", font=("Arial", 25, "bold"),bg=self.button_color, fg=self.text_color,activebackground=self.hover_color,activeforeground=self.text_color, relief="raised",bd=3,cursor="hand2",command=self.back_to_menu)
         self.back_button.pack(pady=20)
-        
         # Эффект наведения для кнопки "Назад"
         self.back_button.bind("<Enter>", lambda e: self.back_button.config(bg=self.hover_color))
         self.back_button.bind("<Leave>", lambda e: self.back_button.config(bg=self.button_color))
 
-        # Отображение текущего игрока
-        self.current_player_label = Label(self.master, text=f"Сейчас ходит: {self.current_player}", font=("Arial", 25, "bold"), bg=self.bg_color,fg=self.text_color)
-        self.current_player_label.pack(pady=10)
 
     def back_to_menu(self):
         self.board_frame.pack_forget()
         self.back_button.pack_forget()
-        self.current_player_label.pack_forget()
         self.reset_game()
         self.show_menu()
 
@@ -112,21 +103,6 @@ class TicTacToe:
                 self.current_player = "O" if self.current_player == "X" else "X"  # Меняем игрока
                 if self.is_ai_game and self.current_player == "O":  # Если следующий ход AI
                     self.AI()
-
-    def highlight_winning_line(self):
-        # Поиск выигрышной линии и ее подсветка
-        winning_lines = [
-            [(0,0), (0,1), (0,2)], [(1,0), (1,1), (1,2)], [(2,0), (2,1), (2,2)],  # строки
-            [(0,0), (1,0), (2,0)], [(0,1), (1,1), (2,1)], [(0,2), (1,2), (2,2)],  # столбцы
-            [(0,0), (1,1), (2,2)], [(0,2), (1,1), (2,0)]  # диагонали
-        ]
-       
-        for line in winning_lines:
-            if all(self.buttons[x][y]['text'] == self.current_player for x, y in line):
-                for x, y in line:
-                    self.buttons[x][y]['bg'] = self.hover_color  # Подсветка выигрышной линии
-                break
-
     def check_winner(self, player):# Строки
         for row in range(3):
             if all(self.buttons[row][col]['text'] == player for col in range(3)):
@@ -173,8 +149,7 @@ class TicTacToe:
         if step == "":
             if self.maps[4] == "":
                 step = 4  # Центр
-        # 5) Если центр занят, то занимаем первую пустую ячейку
-        if step == "":
+        if step == "":# 5) Если центр занят, то занимаем первую пустую ячейку
             for i in range(9):
                 if self.maps[i] == "":
                     step = i
@@ -184,5 +159,5 @@ class TicTacToe:
             self.make_move(x, y)  # Делаем ход AI
 if __name__ == "__main__":
     root = Tk()
-    app = TicTacToe(root)
+    app = TicTac(root)
     root.mainloop()
