@@ -29,20 +29,9 @@ class Battleship:
             "grid": "#7f8c8d"
         }
 
-        self.title = Label(master, text="МОРСКОЙ БОЙ", font=self.title_font, 
-                          bg=self.colors["bg"], fg=self.colors["accent"])
-        self.start_btn = Button(master, text="ИГРАТЬ", font=self.button_font, 
-                               bg=self.colors["accent"], fg=self.colors["text"],
-                               activebackground=self.colors["secondary"],
-                               activeforeground=self.colors["text"],
-                               relief="raised", bd=3, padx=30, pady=10,
-                               command=self.start_game)
-        self.exit_btn = Button(master, text="ВЫХОД", font=self.button_font,
-                              bg="#e74c3c", fg=self.colors["text"],
-                              activebackground="#c0392b",
-                              activeforeground=self.colors["text"],
-                              relief="raised", bd=3, padx=30, pady=10,
-                              command=master.destroy)
+        self.title = Label(master, text="МОРСКОЙ БОЙ", font=self.title_font,  bg=self.colors["bg"], fg=self.colors["accent"])
+        self.start_btn = Button(master, text="ИГРАТЬ", font=self.button_font,  bg=self.colors["accent"], fg=self.colors["text"],activebackground=self.colors["secondary"],activeforeground=self.colors["text"],relief="raised", bd=3, padx=30, pady=10,command=self.start_game)
+        self.exit_btn = Button(master, text="ВЫХОД", font=self.button_font,bg="#e74c3c", fg=self.colors["text"],activebackground="#c0392b",activeforeground=self.colors["text"],relief="raised", bd=3, padx=30, pady=10,command=master.destroy)
 
         self.title.pack(pady=50)
         self.start_btn.pack(pady=15)
@@ -67,12 +56,10 @@ class Battleship:
         main_frame.pack(pady=20)
 
         # Заголовки полей
-        player_title = Label(main_frame, text="ВАШЕ ПОЛЕ", font=("Arial", 16, "bold"),
-                            bg=self.colors["bg"], fg=self.colors["accent"])
+        player_title = Label(main_frame, text="ВАШЕ ПОЛЕ", font=("Arial", 16, "bold"), bg=self.colors["bg"], fg=self.colors["accent"])
         player_title.grid(row=0, column=0, pady=(0, 10))
 
-        ai_title = Label(main_frame, text="ПОЛЕ КОМПЬЮТЕРА", font=("Arial", 16, "bold"),
-                        bg=self.colors["bg"], fg=self.colors["accent"])
+        ai_title = Label(main_frame, text="ПОЛЕ КОМПЬЮТЕРА", font=("Arial", 16, "bold"), bg=self.colors["bg"], fg=self.colors["accent"])
         ai_title.grid(row=0, column=1, pady=(0, 10))
 
         # Фреймы для игровых полей
@@ -86,32 +73,20 @@ class Battleship:
         for i in range(10):
             for j in range(10):
                 # Кнопки игрока (только для отображения)
-                btn = Button(player_frame, text="", width=3, height=1, 
-                            font=self.board_font, bg=self.colors["water"],
-                            relief="raised", bd=1, state=DISABLED)
+                btn = Button(player_frame, text="", width=3, height=1,  font=self.board_font, bg=self.colors["water"],relief="raised", bd=1, state=DISABLED)
                 btn.grid(row=i, column=j, padx=1, pady=1)
                 self.player_buttons[i][j] = btn
 
                 # Кнопки компьютера (для атаки)
-                btn = Button(ai_frame, text="", width=3, height=1,
-                            font=self.board_font, bg=self.colors["water"],
-                            relief="raised", bd=1,
-                            command=lambda x=i, y=j: self.attack(x, y))
+                btn = Button(ai_frame, text="", width=3, height=1,font=self.board_font, bg=self.colors["water"],relief="raised", bd=1,command=lambda x=i, y=j: self.attack(x, y))
                 btn.grid(row=i, column=j, padx=1, pady=1)
                 self.ai_buttons[i][j] = btn
 
         # Кнопка возврата и статус
-        self.back_btn = Button(self.master, text="← НАЗАД", font=("Arial", 14, "bold"),
-                              bg="#95a5a6", fg=self.colors["text"],
-                              activebackground="#7f8c8d",
-                              activeforeground=self.colors["text"],
-                              relief="raised", bd=2, padx=20, pady=5,
-                              command=self.back_to_menu)
+        self.back_btn = Button(self.master, text="← НАЗАД", font=("Arial", 14, "bold"), bg="#95a5a6", fg=self.colors["text"],activebackground="#7f8c8d",activeforeground=self.colors["text"],relief="raised", bd=2, padx=20, pady=5,command=self.back_to_menu)
         self.back_btn.pack(pady=10)
 
-        self.status = Label(self.master, text="ВАШ ХОД! АТАКУЙТЕ ПОЛЕ КОМПЬЮТЕРА", 
-                           font=self.status_font, bg=self.colors["bg"], 
-                           fg=self.colors["text"], pady=10)
+        self.status = Label(self.master, text="ВАШ ХОД! АТАКУЙТЕ ПОЛЕ КОМПЬЮТЕРА", font=self.status_font, bg=self.colors["bg"], fg=self.colors["text"], pady=10)
         self.status.pack(pady=5)
 
         self.place_ships()
@@ -175,8 +150,7 @@ class Battleship:
 
         if self.ai_board[x][y] == 'S':
             self.ai_board[x][y] = 'X'
-            self.ai_buttons[x][y].config(text="💥", bg=self.colors["hit"], 
-                                        fg="white", state=DISABLED)
+            self.ai_buttons[x][y].config(text="💥", bg=self.colors["hit"],  fg="white", state=DISABLED)
 
             # Проверяем, потоплен ли корабль
             for ship in self.ai_ships:
