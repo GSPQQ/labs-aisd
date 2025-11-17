@@ -1,0 +1,188 @@
+from tkinter import *
+from tkinter.messagebox import showinfo
+
+
+class TicTacToe:
+    def __init__(self, master):
+        self.master = master
+        self.master.title('Крестики нолики | Tic Tac Toe')
+        self.master.geometry('%dx%d+%d+%d' % (1200, 1000, 350, 120))
+        # Цветовая схема
+        self.bg_color = "#2C3E50"  # Темно-синий фон
+        self.accent_color = "#E74C3C"  # Красный акцент
+        self.secondary_color = "#3498DB"  # Синий акцент
+        self.text_color = "#ECF0F1"  # Светлый текст
+        self.button_color = "#34495E"  # Цвет кнопок
+        self.hover_color = "#1ABC9C"  # Цвет при наведении
+        # Настройка фона
+        self.master.config(bg=self.bg_color)
+        # Заголовок игры
+        self.game_title = Label(master, text="Крестики-нолики", font=("Arial", 59, "bold"), 
+                               bg=self.bg_color, fg=self.accent_color)
+        self.game_title.pack(pady=50)
+        # Стиль для кнопок
+        button_style = {"font": ("Arial", 30, "bold"),"bg": self.button_color,"fg": self.text_color,"activebackground": self.hover_color,"activeforeground": self.text_color,"relief": "raised","bd": 3,"width": 20,"height": 1,"cursor": "hand2"}
+        # Кнопки
+        self.play_two_person = Button(master, text="Играть против друга", 
+                                     command=self.start_game_two, **button_style)
+        self.play_two_person.pack(pady=20)
+        # Эффект наведения для кнопок
+        self.play_two_person.bind("<Enter>", lambda e: self.play_two_person.config(bg=self.hover_color))
+        self.play_two_person.bind("<Leave>", lambda e: self.play_two_person.config(bg=self.button_color))
+        self.play_ai = Button(master, text="Против Компьютера", 
+                             command=self.start_game_ai, **button_style)
+        self.play_ai.pack(pady=20)
+        self.play_ai.bind("<Enter>", lambda e: self.play_ai.config(bg=self.hover_color))
+        self.play_ai.bind("<Leave>", lambda e: self.play_ai.config(bg=self.button_color))
+        self.exit = Button(master, text="Выйти из игры", 
+                          command=master.destroy, **button_style)
+        self.exit.pack(pady=20)
+        self.exit.bind("<Enter>", lambda e: self.exit.config(bg=self.accent_color))
+        self.exit.bind("<Leave>", lambda e: self.exit.config(bg=self.button_color))
+        self.current_player = "X"
+        self.maps = [""] * 9  # Инициализируем игровую карту
+    def start_game_two(self):
+        self.is_ai_game = False  # Устанавливаем флаг, что играем против друга
+        self.hide_menu()
+        self.create_game_board()
+    def start_game_ai(self):
+        self.is_ai_game = True  # Устанавливаем флаг, что играем против AI
+        self.hide_menu()
+        self.create_game_board()
+    def hide_menu(self):
+        self.game_title.pack_forget()
+        self.play_two_person.pack_forget()
+        self.play_ai.pack_forget()
+        self.exit.pack_forget()
+    def create_game_board(self):
+        self.board_frame = Frame(self.master, bg=self.bg_color)
+        self.board_frame.pack(pady=40)
+
+        # Стиль для игровых кнопок
+        board_button_style = {
+            "font": ("Arial", 50, "bold"),"width": 4,"height": 2,"relief": "raised","bd": 7,"cursor": "hand2"
+        }
+
+        self.buttons = [[None for _ in range(3)] for _ in range(3)]
+        for i in range(3):
+            for j in range(3):
+                self.buttons[i][j] = Button(self.board_frame, text="", 
+                                           command=lambda x=i, y=j: self.make_move(x, y),
+                                           **board_button_style)
+                self.buttons[i][j].grid(row=i, column=j, padx=5, pady=5)
+
+        # Кнопка "Назад"
+        self.back_button = Button(self.master, text="Назад в меню", font=("Arial", 25, "bold"),bg=self.button_color, fg=self.text_color,activebackground=self.hover_color,activeforeground=self.text_color, relief="raised",bd=3,cursor="hand2",command=self.back_to_menu)
+        self.back_button.pack(pady=20)
+        
+        # Эффект наведения для кнопки "Назад"
+        self.back_button.bind("<Enter>", lambda e: self.back_button.config(bg=self.hover_color))
+        self.back_button.bind("<Leave>", lambda e: self.back_button.config(bg=self.button_color))
+
+        # Отображение текущего игрока
+        self.current_player_label = Label(self.master, text=f"Сейчас ходит: {self.current_player}", font=("Arial", 25, "bold"), bg=self.bg_color,fg=self.text_color)
+        self.current_player_label.pack(pady=10)
+
+    def back_to_menu(self):
+        self.board_frame.pack_forget()
+        self.back_button.pack_forget()
+        self.current_player_label.pack_forget()
+        self.reset_game()
+        self.show_menu()
+
+    def show_menu(self):
+        self.game_title.pack(pady=50)
+        self.play_two_person.pack(pady=20)
+        self.play_ai.pack(pady=20)
+        self.exit.pack(pady=20)
+
+    def make_move(self, x, y):
+         if self.buttons[x][y]['text'] == "":
+            self.buttons[x][y]['text'] = self.current_player  # Устанавливаем текущего игрока
+            self.buttons[x][y]['fg'] = self.accent_color if self.current_player == "X" else self.secondary_color
+            self.maps[x * 3 + y] = self.current_player  # Обновляем карту
+            self.buttons[x][y]['bg'] = "#2C3E50"  # Темный фон
+            if self.check_winner(self.current_player):
+                showinfo("Победа!", f"Игрок {self.current_player} победил!")
+                self.reset_game()
+            elif self.is_draw():
+                showinfo("Ничья!", "Игра закончилась вничью!")
+                self.reset_game()
+            else:
+                self.current_player = "O" if self.current_player == "X" else "X"  # Меняем игрока
+                if self.is_ai_game and self.current_player == "O":  # Если следующий ход AI
+                    self.AI()
+
+    def highlight_winning_line(self):
+        # Поиск выигрышной линии и ее подсветка
+        winning_lines = [
+            [(0,0), (0,1), (0,2)], [(1,0), (1,1), (1,2)], [(2,0), (2,1), (2,2)],  # строки
+            [(0,0), (1,0), (2,0)], [(0,1), (1,1), (2,1)], [(0,2), (1,2), (2,2)],  # столбцы
+            [(0,0), (1,1), (2,2)], [(0,2), (1,1), (2,0)]  # диагонали
+        ]
+       
+        for line in winning_lines:
+            if all(self.buttons[x][y]['text'] == self.current_player for x, y in line):
+                for x, y in line:
+                    self.buttons[x][y]['bg'] = self.hover_color  # Подсветка выигрышной линии
+                break
+
+    def check_winner(self, player):# Строки
+        for row in range(3):
+            if all(self.buttons[row][col]['text'] == player for col in range(3)):
+                return True# Столбцы
+        for col in range(3):
+            if all(self.buttons[row][col]['text'] == player for row in range(3)):
+                return True # Диагонали
+        if all(self.buttons[i][i]['text'] == player for i in range(3)):
+            return True
+        if all(self.buttons[i][2 - i]['text'] == player for i in range(3)):
+            return True
+        return False
+    def is_draw(self):
+        return all(self.buttons[i][j]['text'] != "" for i in range(3) for j in range(3))
+    def reset_game(self):
+        for i in range(3):
+            for j in range(3):
+                self.buttons[i][j]['text'] = ""
+                self.buttons[i][j]['bg'] = "SystemButtonFace"  # Сброс цвета фона
+                self.maps[i * 3 + j] = ""  # Сбрасываем карту
+    def check_line(self, sum_O, sum_X):
+        step = ""
+        victories = [
+            [0, 1, 2], [3, 4, 5], [6, 7, 8],  # строки
+            [0, 3, 6], [1, 4, 7], [2, 5, 8],  # столбцы
+            [0, 4, 8], [2, 4, 6]  # диагонали
+        ]
+        for line in victories:
+            o = sum(1 for j in line if self.maps[j] == "O")
+            x = sum(1 for j in line if self.maps[j] == "X")
+
+            if o == sum_O and x == sum_X:
+                for j in line:
+                    if self.maps[j] != "O" and self.maps[j] != "X":
+                        step = j  # Возвращаем индекс пустой ячейки
+        return step
+    def AI(self):
+        step = "" # 1) Если на какой-либо из победных линий 2 свои фигуры и 0 чужих - ставим
+        step = self.check_line(2, 0)# 2) Если на какой-либо из победных линий 2 чужие фигуры и 0 своих - ставим
+        if step == "":
+            step = self.check_line(0, 2)# 3) Если 1 фигура своя и 0 чужих - ставим
+        if step == "":
+            step = self.check_line(1, 0)# 4) Центр пуст, то занимаем центр
+        if step == "":
+            if self.maps[4] == "":
+                step = 4  # Центр
+        # 5) Если центр занят, то занимаем первую пустую ячейку
+        if step == "":
+            for i in range(9):
+                if self.maps[i] == "":
+                    step = i
+                    break
+        if step != "":
+            x, y = divmod(step, 3)  # Преобразуем индекс в координаты
+            self.make_move(x, y)  # Делаем ход AI
+if __name__ == "__main__":
+    root = Tk()
+    app = TicTacToe(root)
+    root.mainloop()
