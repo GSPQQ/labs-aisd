@@ -6,7 +6,6 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 
 class RentalContract:
-    # Инициализация оставлена без изменений, так как она понятна и необходима.
     def __init__(self, contract_id, client_name, car_model, car_class, manager, duration_days, price):
         self.contract_id = contract_id
         self.client_name = client_name
