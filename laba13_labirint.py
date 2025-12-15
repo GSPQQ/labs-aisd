@@ -24,10 +24,8 @@ visited = set()
 
 def generate_maze():
     global maze, player_pos, exit_positions, COLS, ROWS
-    
     COLS = COLS if COLS % 2 == 1 else COLS + 1
     ROWS = ROWS if ROWS % 2 == 1 else ROWS + 1
-    
     maze = [[True for _ in range(COLS)] for _ in range(ROWS)]
 
     def gen(x, y):
