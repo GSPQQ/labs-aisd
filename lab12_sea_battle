@@ -1,7 +1,6 @@
 import tkinter as tk
 import random
 
-# --- Константы Дизайна (Остаются прежними) ---
 COLOR_BG = "#F0F0F0"
 COLOR_SHIP = "#3CB371"
 COLOR_EMPTY = "#ADD8E6"
@@ -33,7 +32,6 @@ def place_ships():
                 placed = True
                 break
         if not placed: 
-            # Здесь мы полагаемся на то, что за 200 попыток разместится
             pass
             
     return ships
@@ -48,11 +46,10 @@ class Board:
         
         for s in self.ships:
             if pos in s: 
-                # Найдено попадание
                 if s.issubset(self.shots):
-                    return "sunk", s # Возвращаем "sunk" и сам корабль
+                    return "sunk", s 
                 else:
-                    return "hit", None # Возвращаем "hit"
+                    return "hit", None 
         return "miss", None # Возвращаем "miss"
 
     def all_sunk(self):
