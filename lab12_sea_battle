@@ -1,11 +1,20 @@
 import tkinter as tk
 import random
 
+# --- Константы Дизайна (Остаются прежними) ---
+COLOR_BG = "#F0F0F0"
+COLOR_SHIP = "#3CB371"
+COLOR_EMPTY = "#ADD8E6"
+COLOR_HIT = "#FF4500"
+COLOR_MISS = "#4682B4"
+COLOR_DISABLED_SHIP = "#808080"
+FONT_STATUS = ("Helvetica", 16, "bold")
+FONT_LABEL = ("Helvetica", 12, "bold")
+
 SIZE = 10
 
 def place_ships():
     board_cells, ships = set(), []
-    # sizes = [4, 3, 3, 2, 2, 2, 1, 1, 1, 1] - используемый список
     for size in [4, 3, 3, 2, 2, 2, 1, 1, 1, 1]:
         placed = False
         for _ in range(200):
@@ -13,14 +22,20 @@ def place_ships():
             x = random.randint(0, SIZE - (size if h else 1))
             y = random.randint(0, SIZE - (size if not h else 1))
             cells = {(x + (i if h else 0), y + (i if not h else 0)) for i in range(size)}
-            # Проверка, что вокруг новой ячейки нет других кораблей (включая диагонали)
-            if all((cx + dx, cy + dy) not in board_cells for cx, cy in cells for dx in (-1, 0, 1) for dy in (-1, 0, 1)):
-                ships.append(cells);
-                board_cells |= cells;
-                placed = True;
+            
+            if all((cx + dx, cy + dy) not in board_cells 
+                   for cx, cy in cells 
+                   for dx in (-1, 0, 1) 
+                   for dy in (-1, 0, 1)):
+                
+                ships.append(cells)
+                board_cells |= cells
+                placed = True
                 break
-        # На случай, если корабль не удалось разместить за 200 попыток (крайне маловероятно)
-        if not placed: ships.append(cells); board_cells |= cells
+        if not placed: 
+            # Здесь мы полагаемся на то, что за 200 попыток разместится
+            pass
+            
     return ships
 
 class Board:
@@ -30,158 +45,215 @@ class Board:
     def shoot(self, pos):
         if pos in self.shots: return None
         self.shots.add(pos)
+        
         for s in self.ships:
             if pos in s: 
-                # Проверка, затонул ли корабль
-                if s <= self.shots:
-                    # Помечаем все клетки вокруг затонувшего корабля как промахи
-                    for cx, cy in s:
-                        for dx in (-1, 0, 1):
-                            for dy in (-1, 0, 1):
-                                self.shots.add((cx + dx, cy + dy))
-                    return "sunk"
-                return "hit"
-        return "miss"
+                # Найдено попадание
+                if s.issubset(self.shots):
+                    return "sunk", s # Возвращаем "sunk" и сам корабль
+                else:
+                    return "hit", None # Возвращаем "hit"
+        return "miss", None # Возвращаем "miss"
 
     def all_sunk(self):
-        return all(s <= self.shots for s in self.ships)
+        return all(s.issubset(self.shots) for s in self.ships)
 
 class AI:
     def __init__(self):
-        self.board, self.targets, self.used = Board(), [], set()
+        self.board = Board()
+        self.targets, self.used = [], set()
 
     def shoot(self):
-        # Если есть цели (режим "охоты" после попадания)
         if self.targets: 
-            return self.targets.pop()
-        # Иначе выбираем случайную клетку (режим "поиска")
+            # Очищаем цели, которые уже были использованы
+            while self.targets and self.targets[-1] in self.used:
+                self.targets.pop()
+            if self.targets:
+                return self.targets.pop()
+
         allp = [(x, y) for x in range(SIZE) for y in range(SIZE) if (x, y) not in self.used]
-        # Используем стратегию "четных" клеток для ускорения поиска (опционально, убрано для простоты)
         return random.choice(allp) if allp else (0, 0)
 
-    def feedback(self, pos, res):
+    # Метод feedback теперь должен получать информацию о потопленном корабле, если таковой есть
+    def feedback(self, pos, res, sunk_ship_cells=None):
         self.used.add(pos)
+        
         if res == "hit":
             x, y = pos
-            # Добавляем соседние клетки как цели для продолжения стрельбы
             for dx, dy in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
                 nx, ny = x + dx, y + dy
                 if 0 <= nx < SIZE and 0 <= ny < SIZE and (nx, ny) not in self.used:
-                    self.targets.append((nx, ny))
+                    # Добавляем цель, только если она еще не в списке целей и не была использована
+                    if (nx, ny) not in self.targets:
+                         self.targets.append((nx, ny))
+                         
         elif res == "sunk":
-            # После потопления корабля сбрасываем цели
             self.targets.clear()
+            # Дополнительная логика для AI: отмечать ореол промаха
+            if sunk_ship_cells:
+                # Отмечаем клетки вокруг потопленного корабля как "использованные" (промахи)
+                for cx, cy in sunk_ship_cells:
+                    for dx in (-1, 0, 1):
+                        for dy in (-1, 0, 1):
+                            px, py = cx + dx, cy + dy
+                            if 0 <= px < SIZE and 0 <= py < SIZE and (px, py) not in sunk_ship_cells:
+                                self.used.add((px, py))
+                                # Убираем из целей, если вдруг там была клетка ореола
+                                if (px, py) in self.targets:
+                                    self.targets.remove((px, py)) 
+
 
 class Game:
     def __init__(self, root):
-        self.root, self.player, self.ai = root, Board(), AI()
+        self.root = root
+        self.player, self.ai = Board(), AI()
         self.root.title("Морской бой")
+        self.root.config(bg=COLOR_BG)
+        self.game_active = True
         self.setup_ui()
-        self.restart() # Запускаем первую игру
+        self.update()
 
+    # (Метод setup_ui остается без изменений)
     def setup_ui(self):
-        # ИЗМЕНЕНИЕ: Фон фрейма
-        f = tk.Frame(self.root, bg="#f0f0f0");
-        f.pack(padx=10, pady=10)
-        self.status = tk.Label(f, text="Начните игру!", font=("Arial", 14, "bold"), fg="navy");
-        self.status.grid(row=0, column=0, columnspan=22, pady=5)
-        
-        tk.Label(f, text="Мой флот", font=("Arial", 11, "bold")).grid(row=1, column=0, columnspan=10)
-        tk.Label(f, text="Флот противника", font=("Arial", 11, "bold")).grid(row=1, column=12, columnspan=10)
-        
-        # Создаём разделительный столбец
-        f.grid_columnconfigure(10, minsize=40)
-        f.grid_columnconfigure(11, minsize=1)
-        
+        f = tk.Frame(self.root, bg=COLOR_BG, padx=10, pady=10)
+        f.pack()
+        self.status = tk.Label(f, text="Ваш ход!", font=FONT_STATUS, bg=COLOR_BG)
+        self.status.grid(row=0, column=0, columnspan=22, pady=(0, 10))
+        tk.Label(f, text="Мой флот", font=FONT_LABEL, bg=COLOR_BG).grid(row=1, column=0, columnspan=10)
+        tk.Label(f, text="Флот противника", font=FONT_LABEL, bg=COLOR_BG).grid(row=1, column=12, columnspan=10)
+        f.grid_columnconfigure(10, minsize=50)
         self.p_btns, self.e_btns = [], []
         for y in range(SIZE):
             row_p, row_e = [], []
             for x in range(SIZE):
-                # ИЗМЕНЕНИЕ: Стиль кнопок для игрового поля
-                style = {"width": 2, "height": 1, "relief": "raised", "bd": 1}
-
-                # Поле игрока (My board)
-                b_p = tk.Button(f, **style, bg="#b0e0e6", state="disabled") # Светло-голубой
-                b_p.grid(row=y + 2, column=x);
+                b_p = tk.Button(f, width=2, height=1, bg=COLOR_EMPTY, state="disabled", relief=tk.RAISED)
+                b_p.grid(row=y + 2, column=x, padx=1, pady=1)
                 row_p.append(b_p)
-
-                # Поле противника (Enemy board)
-                b_e = tk.Button(f, **style, bg="#b0e0e6", command=lambda x=x, y=y: self.shot(x, y)) # Светло-голубой
-                b_e.grid(row=y + 2, column=x + 12);
+                b_e = tk.Button(f, width=2, height=1, bg=COLOR_EMPTY, relief=tk.RAISED,
+                                command=lambda x=x, y=y: self.shot(x, y))
+                b_e.grid(row=y + 2, column=x + 12, padx=1, pady=1)
                 row_e.append(b_e)
-                
-            self.p_btns.append(row_p);
+            self.p_btns.append(row_p)
             self.e_btns.append(row_e)
-            
-        tk.Button(f, text="Новая игра", command=self.restart, font=("Arial", 11)).grid(row=12, column=0, columnspan=22, pady=10)
+        tk.Button(f, text="Новая игра", command=self.restart, font=FONT_LABEL, bg="#FFA07A").grid(
+            row=SIZE + 2, column=0, columnspan=22, pady=(15, 0), ipadx=20)
+        
+    # --- НОВАЯ ФУНКЦИЯ ---
+    def mark_miss_around_ship(self, board_instance, sunk_ship_cells):
+        """Отмечает ореол вокруг потопленного корабля как промах."""
+        for cx, cy in sunk_ship_cells:
+            # Обход соседних клеток (включая углы)
+            for dx in (-1, 0, 1):
+                for dy in (-1, 0, 1):
+                    px, py = cx + dx, cy + dy
+                    pos = (px, py)
+                    
+                    # Проверка границ и того, что клетка не принадлежит кораблю
+                    if 0 <= px < SIZE and 0 <= py < SIZE and pos not in sunk_ship_cells:
+                        board_instance.shots.add(pos)
 
     def update(self):
-        # Обновление поля игрока
+        # Обновление поля Игрока
         for y in range(SIZE):
             for x in range(SIZE):
-                p, e = self.p_btns[y][x], self.e_btns[y][x]
+                p = self.p_btns[y][x]
                 pos = (x, y)
-                
-                # --- Обновление поля игрока ---
                 is_ship = any(pos in s for s in self.player.ships)
                 is_shot = pos in self.player.shots
-                
-                if is_ship and is_shot:
-                    # Попадание по нашему кораблю
-                    p.config(bg="#cc0000") 
-                elif is_ship:
-                    # Наш целый корабль
-                    p.config(bg="#38761d") 
-                elif is_shot:
-                    # Промах по нашему полю
-                    p.config(bg="#808080") 
-                else:
-                    # Вода
-                    p.config(bg="#b0e0e6") 
 
-                # --- Обновление поля противника ---
-                is_enemy_shot = pos in self.ai.board.shots
-                is_enemy_ship = any(pos in s for s in self.ai.board.ships)
+                if is_shot:
+                    # Попал или промах
+                    p.config(bg=COLOR_HIT if is_ship else COLOR_MISS, text="X" if is_ship else "•", fg="white" if is_ship else "black")
+                elif is_ship:
+                    # Свой корабль (не стреляли)
+                    p.config(bg=COLOR_SHIP, text="", fg="black")
+                else:
+                    # Пустая вода
+                    p.config(bg=COLOR_EMPTY, text="", fg="black")
+                    
+        # Обновление поля Противника
+        for y in range(SIZE):
+            for x in range(SIZE):
+                e = self.e_btns[y][x]
+                pos = (x, y)
+                is_shot = pos in self.ai.board.shots
+                is_ship = any(pos in s for s in self.ai.board.ships)
                 
-                if is_enemy_shot:
-                    e.config(state="disabled")
-                    if is_enemy_ship:
-                        # Попадание по вражескому кораблю
-                        e.config(bg="#cc0000") 
-                        # Промах по вражескому полю
-                        e.config(bg="#808080") 
+                if is_shot:
+                    # Выстрел был
+                    e.config(state="disabled", text="X" if is_ship else "•", 
+                             bg=COLOR_HIT if is_ship else COLOR_MISS,
+                             fg="white" if is_ship else "black")
+                else:
+                    # Выстрела не было
+                    e.config(state="normal" if self.game_active else "disabled", text="", bg=COLOR_EMPTY)
 
     def shot(self, x, y):
-        # Выстрел игрока
-        if self.ai.board.shoot((x, y)) is None: return
-        # Ход ИИ
-        ai_pos = self.ai.shoot()
-        ai_res = self.player.shoot(ai_pos) # Получаем результат выстрела ИИ
-        # Обновление обратной связи ИИ
-        self.ai.feedback(ai_pos, ai_res)
-        
-        self.update()
-        
-        # Проверка конца игры
-        if self.ai.board.all_sunk():
-            self.status.config(text="Победа!", fg="green")
-            self.disable_enemy_board()
-        elif self.player.all_sunk():
-            self.status.config(text="Поражение!", fg="red")
-            self.disable_enemy_board()
+        if not self.game_active:
+            return
 
-    def disable_enemy_board(self):
-        for row in self.e_btns:
-            for btn in row:
-                btn.config(state="disabled")
+        # 1. Ход Игрока
+        res_p, ship_p = self.ai.board.shoot((x, y)) # res_p: "hit", "sunk", "miss"
+        if res_p is None: 
+            return # Уже стреляли
+            
+        if res_p == "sunk":
+            # Отмечаем ореол промаха вокруг потопленного корабля противника
+            self.mark_miss_around_ship(self.ai.board, ship_p)
+
+        self.update() 
+
+        # 2. Проверка победы
+        if self.ai.board.all_sunk():
+            self.status.config(text="🎉 ПОБЕДА! Все корабли противника потоплены!", fg="green")
+            self.game_active = False
+            self.update()
+            return
+            
+        # 3. Ход AI (стреляет до промаха)
+        self.status.config(text="Ход противника...")
+        self.root.update()
+        
+        while True:
+            if not self.game_active: break
+            
+            ai_pos = self.ai.shoot()
+            res_ai, ship_ai = self.player.shoot(ai_pos)
+
+            # Определяем фактический результат для обратной связи AI
+            if res_ai == "sunk":
+                ai_res = "sunk"
+                self.mark_miss_around_ship(self.player, ship_ai) # Отмечаем ореол промаха вокруг своего корабля
+                self.ai.feedback(ai_pos, ai_res, ship_ai) # Передаем AI информацию о потопленном корабле
+            elif res_ai == "hit":
+                ai_res = "hit"
+                self.ai.feedback(ai_pos, ai_res)
+            else: # res_ai == "miss"
+                ai_res = "miss"
+                self.ai.feedback(ai_pos, ai_res)
+
+            self.update()
+            
+            # Проверка поражения
+            if self.player.all_sunk():
+                self.status.config(text="😢 ПОРАЖЕНИЕ! Все ваши корабли потоплены!", fg="red")
+                self.game_active = False
+                self.update()
+                return
+
+            if res_ai == "miss" or res_ai is None:
+                # Если AI промахнулся, ход переходит обратно игроку
+                break
+                
+            # Задержка для наглядности хода AI
+            self.root.after(200) 
+            
+        self.status.config(text="Ваш ход!", fg="black")
 
     def restart(self):
         self.player, self.ai = Board(), AI()
-        self.status.config(text="Сделайте свой ход", fg="navy")
-        # Включаем все кнопки противника и обновляем поле
-        for row in self.e_btns:
-            for btn in row:
-                btn.config(state="normal")
+        self.game_active = True
+        self.status.config(text="Ваш ход!", fg="black")
         self.update()
 
 root = tk.Tk()
