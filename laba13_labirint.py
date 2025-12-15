@@ -11,7 +11,6 @@ class MazeGame:
         self.cell_size = cell_size
         self.time_limit = time_limit_sec
 
-        # ИЗМЕНЕНИЕ: Цвет фона лабиринта
         self.canvas = tk.Canvas(root, width=self.cols * self.cell_size,
                                 height=self.rows * self.cell_size, bg="#fffde7")
         self.canvas.pack(pady=10)
@@ -33,14 +32,12 @@ class MazeGame:
         self.moving = False
         self.remaining = self.time_limit
         self.timer_label.config(text="Время: -- с")
-        # ИЗМЕНЕНО. убрали фиксированные точки для паучка и выхода
         self.generate_maze()
         self.draw_maze()
         self.draw_player()
         self.canvas.delete("trail")
 
-    def generate_maze(self): #создает лабиринт ИЗМНЕНЕНО. старт и выход больше не вручную
-        #делаются проходами, а изначально выбираются из свободных клеток
+    def generate_maze(self): 
         self.maze = [[True for _ in range(self.cols)] for _ in range(self.rows)]
 
         def dfs(x, y):
@@ -54,8 +51,6 @@ class MazeGame:
                     dfs(nx, ny)
 
         dfs(1, 1)
-
-        # ИЗМЕНЕНО. собираем все проходы и выбираем случайный старт и выход
         passages = []
         for y in range(1, self.rows - 1):
             for x in range(1, self.cols - 1):
@@ -77,15 +72,13 @@ class MazeGame:
             for x in range(self.cols):
                 cx, cy = x * self.cell_size, y * self.cell_size
                 if self.maze[y][x]:
-                    # ИЗМЕНЕНИЕ: Цвет стен
                     self.canvas.create_rectangle(
                         cx, cy, cx + self.cell_size, cy + self.cell_size,
-                        fill="#004d40", outline="" # Темно-зеленый
+                        fill="#004d40", outline="" 
                     )
         ex, ey = self.exit_pos
         cx = ex * self.cell_size + self.cell_size // 2
         cy = ey * self.cell_size + self.cell_size // 2
-        # ИЗМЕНЕНИЕ: Цвет текста "Выход"
         self.canvas.create_text(cx, cy, text="Выход", fill="#d50000", font=("Arial", 12, "bold"))
 
     def draw_player(self): #рисует паучка
@@ -97,7 +90,6 @@ class MazeGame:
         r = self.cell_size * 0.35
         self._player_id = self.canvas.create_oval(
             cx - r, cy - r, cx + r, cy + r,
-            # ИЗМЕНЕНИЕ: Цвет паучка
             fill="#512da8", outline="white", width=1 # Темно-фиолетовый
         )
 
@@ -141,7 +133,6 @@ class MazeGame:
         r = self.cell_size * 0.12
         self.canvas.create_oval(
             cx - r, cy - r, cx + r, cy + r,
-            # ИЗМЕНЕНИЕ: Цвет следа паучка
             fill="#ff8f00", outline="", tags="trail" # Оранжевый
         )
 
