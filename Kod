@@ -1,0 +1,126 @@
+import tkinter as tk
+from tkinter import messagebox
+import random
+
+# Константы игры
+SIZE = 10
+CELL_SIZE = 30
+
+class SeaBattle:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Морской бой")
+        
+        # Состояния полей: 0 - пусто, 1 - корабль, 2 - промах, 3 - попадание
+        self.player_field = [[0]*SIZE for _ in range(SIZE)]
+        self.bot_field = [[0]*SIZE for _ in range(SIZE)]
+        
+        self.setup_ui()
+        self.start_game()
+
+    def setup_ui(self):
+        """Создание интерфейса"""
+        self.canvas_player = tk.Canvas(self.root, width=SIZE*CELL_SIZE, height=SIZE*CELL_SIZE, bg="white")
+        self.canvas_player.grid(row=0, column=0, padx=20, pady=20)
+        
+        self.canvas_bot = tk.Canvas(self.root, width=SIZE*CELL_SIZE, height=SIZE*CELL_SIZE, bg="white")
+        self.canvas_bot.grid(row=0, column=1, padx=20, pady=20)
+        self.canvas_bot.bind("<Button-1>", self.player_shoot)
+
+        tk.Label(self.root, text="Ваше поле").grid(row=1, column=0)
+        tk.Label(self.root, text="Поле противника (стреляйте сюда)").grid(row=1, column=1)
+
+    def start_game(self):
+        """Начало новой игры и расстановка кораблей"""
+        self.place_ships(self.player_field)
+        self.place_ships(self.bot_field)
+        self.draw_field(self.canvas_player, self.player_field, show_ships=True)
+        self.draw_field(self.canvas_bot, self.bot_field, show_ships=False)
+
+    def place_ships(self, field):
+        """Случайная расстановка кораблей (4, 3, 2, 1 палубы)"""
+        ships = [4, 3, 3, 2, 2, 2, 1, 1, 1, 1]
+        for ship_len in ships:
+            placed = False
+            while not placed:
+                x, y = random.randint(0, SIZE-1), random.randint(0, SIZE-1)
+                direction = random.choice([(0, 1), (1, 0)]) # горизонтально или вертикально
+                
+                if self.can_place(field, x, y, ship_len, direction):
+                    for i in range(ship_len):
+                        field[y + i*direction[1]][x + i*direction[0]] = 1
+                    placed = True
+
+    def can_place(self, field, x, y, length, direction):
+        """Проверка возможности поставить корабль (с учетом зазоров)"""
+        for i in range(length):
+            nx, ny = x + i*direction[0], y + i*direction[1]
+            if not (0 <= nx < SIZE and 0 <= ny < SIZE) or field[ny][nx] != 0:
+                return False
+            # Проверка соседних клеток
+            for dx in range(-1, 2):
+                for dy in range(-1, 2):
+                    if 0 <= nx+dx < SIZE and 0 <= ny+dy < SIZE:
+                        if field[ny+dy][nx+dx] == 1:
+                            return False
+        return True
+
+    def draw_field(self, canvas, field, show_ships=False):
+        """Отрисовка сетки и содержимого"""
+        canvas.delete("all")
+        for y in range(SIZE):
+            for x in range(SIZE):
+                x1, y1 = x * CELL_SIZE, y * CELL_SIZE
+                x2, y2 = x1 + CELL_SIZE, y1 + CELL_SIZE
+                
+                color = "white"
+                state = field[y][x]
+                if state == 1 and show_ships: color = "gray"
+                elif state == 2: color = "lightblue" # Промах
+                elif state == 3: color = "red"       # Попал
+                
+                canvas.create_rectangle(x1, y1, x2, y2, outline="black", fill=color)
+
+    def player_shoot(self, event):
+        """Логика выстрела игрока"""
+        x, y = event.x // CELL_SIZE, event.y // CELL_SIZE
+        if not (0 <= x < SIZE and 0 <= y < SIZE) or self.bot_field[y][x] in [2, 3]:
+            return
+
+        if self.bot_field[y][x] == 1:
+            self.bot_field[y][x] = 3
+        else:
+            self.bot_field[y][x] = 2
+            self.root.after(500, self.bot_shoot) # Бот ходит после промаха
+
+        self.draw_field(self.canvas_bot, self.bot_field)
+        self.check_win()
+
+    def bot_shoot(self):
+        """Логика выстрела бота (случайный выбор)"""
+        while True:
+            x, y = random.randint(0, SIZE-1), random.randint(0, SIZE-1)
+            if self.player_field[y][x] not in [2, 3]:
+                if self.player_field[y][x] == 1:
+                    self.player_field[y][x] = 3
+                    self.draw_field(self.canvas_player, self.player_field, True)
+                    self.check_win()
+                    continue # Бот ходит снова при попадании
+                else:
+                    self.player_field[y][x] = 2
+                    self.draw_field(self.canvas_player, self.player_field, True)
+                break
+
+    def check_win(self):
+        """Проверка на наличие живых кораблей"""
+        if not any(1 in row for row in self.bot_field):
+            messagebox.showinfo("Победа!", "Вы уничтожили все корабли противника!")
+            self.root.destroy()
+        elif not any(1 in row for row in self.player_field):
+            messagebox.showinfo("Поражение", "Компьютер победил!")
+            self.root.destroy()
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    game = SeaBattle(root)
+    root.mainloop()
